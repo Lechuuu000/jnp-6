@@ -1,0 +1,128 @@
+Celem zadania jest stworzenie symulacji komputera z pamięcią,
+obsługującej język typu asembler. Symulację należy zaimplementować,
+używając programowania obiektowego w C++.
+
+Symulacja będzie obsługiwać architekturę z 64-bitowym słowem ze znakiem
+oraz adresacją z odpowiadającym słowem bez znaku.
+
+Klasa Computer powinien mieć:
+* konstruktor jednoparametrowy – pobiera wartość określającą liczbę
+  komórek pamięci w słowach.
+* metodę boot – ładuje oraz wykonuje przekazany program w języku OOAsm.
+  Podczas ładowania programu pamięć komputera jest inicjowana zerami.
+  Następnie wszystkie zmienne są kopiowane do pamięci komputera zgodnie
+  z kolejnością deklaracji, a później wykonywane są pozostałe instrukcje.
+* metodę memory_dump – dokonuje zrzutu pamięci na podany strumień.
+Klasa Computer nie może mieć innych metod publicznych.
+
+Program w języku OOAsm składa się z ciągu instrukcji.
+
+Podstawowe elementy języka OOAsm:
+
+* Identyfikator zmiennej
+  const char* – identyfikator tworzony jest na podstawie ciągu znaków
+  o długości od 1 do 10 włącznie, zawierającego dowolne znaki.
+  Przykłady poprawnych identyfikatorów: "A", "$%^&*", "Cdefg".
+
+* Literał numeryczny całkowitoliczbowy num
+  Przykłady poprawnych literałów:
+  num(13), num(0), num(-50).
+
+* Pamięć mem
+  mem(addr) – dostęp do komórki pamięci pod adresem addr; addr musi być
+  poprawną p-wartością. Odwołania poza dostępną pamięć są wykrywane
+  i zgłaszane jako błąd.
+  Przykłady poprawnych odwołań do pamięci:
+  mem(num(0)), mem(lea("a")).
+
+* Pobranie efektywnego adresu zmiennej lea
+  lea(id) – zwraca wartość efektywnego adresu zmiennej id.
+  Przykłady poprawnych pobrań adresu zmiennej:
+  lea("A"), lea("xyz").
+
+* Poprawna lewa wartość (l-wartość) w OOAsm to mem.
+
+* Poprawne prawe wartości (p-wartość) w OOAsm to mem, num, lea.
+
+OOAsm wspiera następujące instrukcje:
+
+* Deklaracja zmiennej data
+  data(id, value) – deklaruje zmienną o identyfikatorze id oraz wartości
+  numerycznej value.
+  Przykład poprawnej deklaracji zmiennej:
+  data("A", num(5)).
+
+* Operacja kopiowania mov
+  mov(dst, src) – kopiuje wartość src do dst; dst musi być poprawną
+  l-wartością, natomiast src musi być poprawną p-wartością.
+  Przykłady poprawnych instrukcji:
+  mov(mem(num(0)), num(13)), mov(mem(lea("abc")), mem(num(0))).
+
+* Operacje arytmetyczne add, sub, inc, dec
+  add(arg1, arg2) – dodawanie
+  sub(arg1, arg2) – odejmowanie
+  inc(arg) – zwiększają wartość arg o 1
+  dec(arg) – zmniejszają wartość arg o 1
+  Wynik powyższych operacji jest umieszczany odpowiednio w arg1 lub arg; arg1
+  i arg muszą być poprawną l-wartością, natomiast arg2 musi być poprawną
+  p-wartością.
+  Wszystkie operacje arytmetyczne ustawiają:
+  – flagę ZF (zero flag) procesora na 1, jeśli wynik jest 0,
+    a na 0 w przeciwnym przypadku.
+  – flagę SF (sign flag) procesora na 1, jeśli wynik jest ujemny,
+    a na 0 w przeciwnym przypadku.
+  Przykłady poprawnych operacji:
+  add(mem(num(0)), num(1)), inc(mem(lea("a"))).
+
+* Instrukcje przypisania jedynek one, onez, ones
+  one(arg) – ustawia wartość arg na 1
+  onez(arg) – ustawienie warunkowe arg na 1, gdy flaga ZF jest ustawiona na 1
+  ones(arg) – ustawienie warunkowe arg na 1, gdy flaga SF jest ustawiona na 1
+  W powyższych instrukcjach arg musi być poprawną l-wartością.
+  Przykłady poprawnych przypisań jedynek:
+  one(mem(num(0))), ones(mem(num(0))).
+
+= Inne wymagania =
+
+Błędy składniowe języka OOAsm powinny być wykrywane podczas kompilacji.
+Niepoprawne identyfikatory, odwołania poza pamięcią i potencjalne inne błędy
+powinny być wykrywane podczas działania oraz zgłaszane wyjątkami z hierarchii
+std::exception.
+
+Bardzo istotną częścią zadania jest zaprojektowanie odpowiedniej hierarchii
+klas oraz zależności pomiędzy klasami. W szczególności nie wszystkie klasy,
+jakie są wymagane w rozwiązaniu, zostały jawnie wyspecyfikowane w treści
+zadania.
+
+Podczas projektowania należy dbać o odpowiednią enkapsulację, należy kierować
+się zasadami SOLID oraz warto uwzględnić wzorce projektowe GoF. W szczególności
+nie można doprowadzić do zależności cyklicznych typów.
+
+= Przykład użycia =
+
+Przykład użycia znajduje się w pliku ooasm_example.cc.
+
+= Rozwiązanie =
+
+Rozwiązanie musi zawierać pliki nagłówkowe ooasm.h oraz Computer.h.
+Oprócz tego rozwiązanie może zawierać dodatkowe pliki nagłówkowe *.h oraz
+opcjonalne pliki źródłowe *.cc.
+
+Rozwiązanie będzie kompilowane poleceniem
+
+g++ -Wall -Wextra -O2 -std=c++17 *.cc
+
+Pliki rozwiązania należy umieścić w repozytorium w katalogu
+
+grupaN/zadanie6/ab123456+cd123456
+
+lub
+
+grupaN/zadanie6/ab123456+cd123456+ef123456
+
+gdzie N jest numerem grupy, a ab123456, cd123456, ef123456 są identyfikatorami
+członków zespołu umieszczającego to rozwiązanie. Katalog z rozwiązaniem nie
+powinien zawierać innych plików, ale może zawierać podkatalog prywatne, gdzie
+można umieszczać różne pliki, np. swoje testy. Pliki umieszczone w tym
+podkatalogu nie będą oceniane. Nie wolno umieszczać w repozytorium plików
+dużych, binarnych, tymczasowych (np. *.o) ani innych zbędnych.

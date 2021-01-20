@@ -1,0 +1,38 @@
+Kryteria oceny zadania OOAsm
+Języki i narzędzia programowania 1, edycja 2020/21
+
+== Cele dydaktyczne ==
+
+Studenci powinni:
+- poznać zasady programowania obiektowego w C++, w szczególności:
+  metody wirtualne, wielodziedziczenie, dziedziczenie wirtualne;
+- przyswoić sobie dobre praktyki programowania obiektowego;
+- przećwiczyć wybrane wzorce projektowe.
+
+== Ocena automatyczna ==
+
+Po jednym punkcie za przejście wszystkich testów z grup od 1xx do 6xx.
+
+== Ocena jakości tekstu źródłowego ==
+
+Proponuję zacząć od 4 punktów i odejmować po jednym punkcie za
+(przy czym ocena nie może być ujemna):
+1)  Niezgodność zawartości repozytorium ze specyfikacją
+2)  Ostrzeżenia wypisywane przez kompilator
+3)  Brak header guard
+4)  Braki const
+5)  Brak wirtualnych destruktorów (tam gdzie trzeba)
+6)  Problemy z zarządzaniem pamięcią, niekorzystanie ze sprytnych wskaźników
+7)  Brak wyodrębnienia klas reprezentujących identyfikator, pamięć oraz procesor
+    (zasada SRP)
+8)  Brak wyodrębnienia hierarchii elementów języka OOAsm
+9)  Zależności cykliczne typów
+10) Brak właściwej enkapsulacji, m.in. zwracanie modyfikowalnych struktur danych,
+    zbyt duże możliwości modyfikacji stanu obiektu (zbyt dużo publicznych metod,
+    „głupie” publiczne settery lub gettery)
+11) Powtórzenia kodu
+12) Brzydki styl (zbyt duże klasy lub metody, nieprzejrzysty kod, zbyt dużo powiązań)
+13) Nie jest dopuszczalne bezpośrednie używanie RTTI, w szczególności w programie
+    nie powinno być użycia dynamic_cast (nie powinno być żadnego rzutowania w dół),
+    typeid z type_info.
+14) Definiowanie funkcji w plikach nagłówkowych prowadzące do błędu linkowania
