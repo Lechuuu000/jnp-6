@@ -37,7 +37,7 @@ int main()
                                        mov(mem(lea(("d"))), num(0))});
 
     auto lang_helloworld = program({
-                                       mov(mem(/*mem(num(10))*/num(0)), num('h')),
+                                       mov(mem(mem(num(10))), num('h')),
                                        inc(mem(num(10))),
                                        mov(mem(mem(num(10))), num('e')),
                                        inc(mem(num(10))),
@@ -81,9 +81,11 @@ int main()
     try {
         Computer computer5(10);
         computer5.boot(lang_helloworld);
+        std::cout << 1 << "\n";
+
         assert(false);
     }
-    catch(std::exception& e)
+    catch(...)
     {
         assert(true);
     }
@@ -91,24 +93,26 @@ int main()
 
     try
     {
+        std::cout << 2 << "\n";
         auto lang_id = program({data((""), num(4))});
         Computer computer6(10);
         computer6.boot(lang_id);
         assert(false);
     }
-    catch(std::exception& e)
+    catch(...)
     {
         assert(true);
     }
 
     try
     {
+        std::cout << 3 << "\n";
         auto lang_long_id = program({data(("1234567890p"), num(4))});
         Computer computer7(10);
         computer7.boot(lang_long_id);
         assert(false);
     }
-    catch(std::exception& e)
+    catch(...)
     {
         assert(true);
     }
@@ -117,11 +121,13 @@ int main()
                                  mem(lea(("c")))),
                              data(("2137"), num(4))});
     try {
+        std::cout << 4 << "\n";
+
         Computer computer8(10);
         computer8.boot(wrong_id);
         assert(false);
     }
-    catch(std::exception& e)
+    catch(...)
     {
         assert(true);
     }

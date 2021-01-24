@@ -126,65 +126,62 @@ class Flags {
 class RValue {
   public:
     virtual int64_t value(Memory& memory) const noexcept = 0;
-    virtual std::unique_ptr<RValue> give_ownership() = 0;
     virtual ~RValue() = default;
 };
 
 class LValue : public RValue {
   public:
     virtual int64_t get_address(Memory& memory) const = 0;
-    virtual std::unique_ptr<LValue> give_lval_ownership() = 0;
     virtual ~LValue() = default;
 };
 
-class num : public RValue {
+class Num : public RValue {
   public:
-    num(int64_t value) : m_value(value) {}
+    Num(int64_t value) : m_value(value) {}
     int64_t value(Memory& memory) const noexcept override {
         return m_value;
     }
-    std::unique_ptr<RValue> give_ownership() override {
-        return std::make_unique<num>(m_value);
-    }
-
   private:
     const int64_t m_value;
 };
 
-class lea : public RValue {
+std::unique_ptr<Num> num(int64_t value) {
+    return std::make_unique<Num>(value);
+}
+
+
+class Lea : public RValue {
     std::string id;
-    lea(std::string&& text) : id(text) {}
+    Lea(std::string&& text) : id(text) {}
 
   public:
-    explicit lea(const char* text) : id(convert_to_string(text)) {}
+    explicit Lea(const char* text) : id(convert_to_string(text)) {}
     int64_t value(Memory& memory) const noexcept override {
         return memory.get_address(id);
     }
-    std::unique_ptr<RValue> give_ownership() override {
-        return std::unique_ptr<lea>(new lea(std::move(id)));
-    }
 };
 
-class mem : public LValue {
-    std::unique_ptr<RValue> addr_ptr;
-    mem(std::unique_ptr<RValue>&& ptr) : addr_ptr(std::move(ptr)) {}
+std::unique_ptr<Lea> lea(const char* text) {
+    return std::make_unique<Lea>(text);
+}
 
+class Mem : public LValue {
+    std::unique_ptr<RValue> addr_ptr;
   public:
-    explicit mem(RValue&& rval) : addr_ptr(rval.give_ownership()) {}
-    mem(mem&& m) = delete;
+    Mem(std::unique_ptr<RValue>&& ptr) : addr_ptr(std::move(ptr)) {}
+    Mem(Mem&& m) = delete;
     int64_t value(Memory& memory) const noexcept override {
         return memory.get_value(addr_ptr->value(memory));
     }
     int64_t get_address(Memory& memory) const override {
         return addr_ptr->value(memory);
     }
-    std::unique_ptr<RValue> give_ownership() override {
-        return std::unique_ptr<mem>(new mem(std::move(addr_ptr)));
-    }
-    std::unique_ptr<LValue> give_lval_ownership() override {
-        return std::unique_ptr<mem>(new mem(std::move(addr_ptr)));
-    }
 };
+
+std::unique_ptr<Mem> mem(std::unique_ptr<RValue> ptr) {
+    return std::make_unique<Mem>(std::move(ptr));
+}
+
 
 class Instruction {
   public:
@@ -194,32 +191,31 @@ class Instruction {
     virtual ~Instruction() = default;
 };
 
-class ArithmeticOperation {
-  public:
-    virtual int64_t compute(int64_t, int64_t) const = 0;
-};
 
-class BinaryOperation : public Instruction, public ArithmeticOperation {
+
+class ArithmeticOperation : public Instruction {
   protected:
     std::unique_ptr<LValue> arg1_ptr;
     std::unique_ptr<RValue> arg2_ptr;
-    BinaryOperation(LValue&& lval, RValue&& rval)
-        : arg1_ptr(lval.give_lval_ownership()), arg2_ptr(rval.give_ownership()) {}
-    BinaryOperation(BinaryOperation&& op)
+    ArithmeticOperation(std::unique_ptr<LValue> lval, std::unique_ptr<RValue> rval)
+        : arg1_ptr(std::move(lval)), arg2_ptr(std::move(rval)) {}
+    ArithmeticOperation(ArithmeticOperation&& op)
         : arg1_ptr(std::move(op.arg1_ptr)), arg2_ptr(std::move(op.arg2_ptr)) {}
 
   public:
+    virtual int64_t compute(int64_t, int64_t) const = 0;
     void evaluate(Memory& memory, Flags& flags) const override {
         auto result = compute(arg1_ptr->value(memory), arg2_ptr->value(memory));
         flags.set(result);
         memory.set_variable(arg1_ptr->get_address(memory), result);
     }
-    virtual ~BinaryOperation() = default;
+    virtual ~ArithmeticOperation() = default;
 };
 
-class add : public BinaryOperation {
+class add : public ArithmeticOperation {
   public:
-    add(LValue&& lval, RValue&& rval) : BinaryOperation(std::move(lval), std::move(rval)) {}
+    add(std::unique_ptr<LValue> lval, std::unique_ptr<RValue> rval)
+        : ArithmeticOperation(std::move(lval), std::move(rval)) {}
     // add(add&& a) = default;
     int64_t compute(int64_t arg1, int64_t arg2) const override {
         return arg1 + arg2;
@@ -229,9 +225,10 @@ class add : public BinaryOperation {
     }
 };
 
-class sub : public BinaryOperation {
+class sub : public ArithmeticOperation {
   public:
-    sub(LValue&& lval, RValue&& rval) : BinaryOperation(std::move(lval), std::move(rval)) {}
+    sub(std::unique_ptr<LValue> lval, std::unique_ptr<RValue> rval)
+        : ArithmeticOperation(std::move(lval), std::move(rval)) {}
     int64_t compute(int64_t arg1, int64_t arg2) const override {
         return arg1 - arg2;
     }
@@ -242,18 +239,18 @@ class sub : public BinaryOperation {
 
 class inc : public add {
   public:
-    explicit inc(LValue&& lval) : add(std::move(lval), num(1)) {}
+    explicit inc(std::unique_ptr<LValue> lval) : add(std::move(lval), num(1)) {}
 };
 
 class dec : public sub {
   public:
-    explicit dec(LValue&& lval) : sub(std::move(lval), num(1)) {}
+    explicit dec(std::unique_ptr<LValue> lval) : sub(std::move(lval), num(1)) {}
 };
 
 class Assignment : public Instruction {
   protected:
     std::unique_ptr<LValue> arg_ptr;
-    Assignment(LValue&& lval) : arg_ptr(lval.give_lval_ownership()) {}
+    Assignment(std::unique_ptr<LValue> lval) : arg_ptr(std::move(lval)) {}
     Assignment(Assignment&& a) : arg_ptr(std::move(a.arg_ptr)) {}
 };
 
@@ -261,8 +258,8 @@ class mov : public Assignment {
     std::unique_ptr<RValue> val_ptr;
 
   public:
-    mov(LValue&& arg1, RValue&& arg2)
-        : Assignment(std::move(arg1)), val_ptr(arg2.give_ownership()) {}
+    mov(std::unique_ptr<LValue> lval, std::unique_ptr<RValue> rval)
+        : Assignment(std::move(lval)), val_ptr(std::move(rval)) {}
     void evaluate(Memory& memory, Flags& flags) const override {
         memory.set_variable(arg_ptr->get_address(memory), val_ptr->value(memory));
     }
@@ -273,7 +270,7 @@ class mov : public Assignment {
 
 class one : public Assignment {
   public:
-    one(LValue&& lval) : Assignment(std::move(lval)) {}
+    one(std::unique_ptr<LValue> lval) : Assignment(std::move(lval)) {}
     void evaluate(Memory& memory, Flags& flags) const override {
         memory.set_variable(arg_ptr->get_address(memory), 1);
     }
@@ -284,7 +281,7 @@ class one : public Assignment {
 
 class ones : public one {
   public:
-    ones(LValue&& lval) : one(std::move(lval)) {}
+    ones(std::unique_ptr<LValue> lval) : one(std::move(lval)) {}
     void evaluate(Memory& memory, Flags& flags) const override {
         if (flags.is_signed())
             one::evaluate(memory, flags);
@@ -296,7 +293,7 @@ class ones : public one {
 
 class onez : public one {
   public:
-    onez(LValue&& lval) : one(std::move(lval)) {}
+    onez(std::unique_ptr<LValue>  lval) : one(std::move(lval)) {}
     void evaluate(Memory& memory, Flags& flags) const override {
         if (flags.is_zero())
             one::evaluate(memory, flags);
@@ -312,8 +309,8 @@ class data : public Instruction {
     std::unique_ptr<RValue> rval_ptr;
 
   public:
-    data(const char* text, RValue&& rval)
-        : id(convert_to_string(text)), rval_ptr(rval.give_ownership()) {}
+    data(const char* text, std::unique_ptr<RValue> rval)
+        : id(convert_to_string(text)), rval_ptr(std::move(rval)) {}
     void pre_evaluate(Memory& memory) const override {
         memory.declare_variable(id, rval_ptr->value(memory));
     }
