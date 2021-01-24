@@ -1,14 +1,15 @@
 #ifndef JNP_6_COMPUTER_H
 #define JNP_6_COMPUTER_H
 
+#include "ooasm.h"
 #include <iostream>
 #include <map>
-#include "ooasm.h"
 
 class Computer {
   public:
-    explicit Computer(size_t mem_size) : memory(mem_size) , flags(){}
+    explicit Computer(size_t mem_size) : memory(mem_size), flags() {}
     void boot(program& prog) {
+        memory.reset();
         // variable declarations
         while (prog.has_next_instruction()) {
             const Instruction& instruction = prog.get_next_instruction();
