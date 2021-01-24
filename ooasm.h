@@ -15,7 +15,6 @@ static std::string convert_to_string(const char* text) {
     if (text == nullptr) {
         return "";
     }
-    // zabezpieczam się przed bardzo długim id
     for (int i = 0; i <= MAX_ID_LENGTH; i++) {
         if (text[i] == '\0')
             return std::string(text);
@@ -60,7 +59,7 @@ class InvalidIdentifierException : public std::exception {
 
 class Memory {
   private:
-    void validate_address(int64_t address) {
+    void validate_address(int64_t address) const {
         if (address < 0 || address >= memory_array.size())
             throw OutOfBoundsException();
     }
@@ -76,14 +75,14 @@ class Memory {
         memory_array[next_address] = value;
         var_addresses.insert({id, next_address++});
     }
-    int64_t get_address(const std::string& id) {
+    int64_t get_address(const std::string& id) const{
         auto it = var_addresses.find(id);
         if (it == var_addresses.end())
             throw WrongVarNameException();
 
         return it->second;
     }
-    int64_t get_value(int64_t address) {
+    int64_t get_value(int64_t address) const {
         validate_address(address);
         return memory_array[address];
     }
@@ -96,7 +95,7 @@ class Memory {
             stream << i << " ";
     }
     void reset() {
-        for (auto i : memory_array)
+        for (auto& i : memory_array)
             i = 0;
         var_addresses.clear();
         next_address = 0;
@@ -169,26 +168,21 @@ class lea : public RValue {
 class mem : public LValue {
     std::unique_ptr<RValue> addr_ptr;
     mem(std::unique_ptr<RValue>&& ptr) : addr_ptr(std::move(ptr)) {}
+
   public:
     explicit mem(RValue&& rval) : addr_ptr(rval.give_ownership()) {}
-    //mem(mem&& m) = delete;
+    mem(mem&& m) = delete;
     int64_t value(Memory& memory) const noexcept override {
-        auto val = memory.get_value(addr_ptr->value(memory));
-        return val;
+        return memory.get_value(addr_ptr->value(memory));
     }
     int64_t get_address(Memory& memory) const override {
         return addr_ptr->value(memory);
     }
     std::unique_ptr<RValue> give_ownership() override {
-
         return std::unique_ptr<mem>(new mem(std::move(addr_ptr)));
-        // return std::unique_ptr<mem>(new mem(std::move(addr_ptr)));
     }
     std::unique_ptr<LValue> give_lval_ownership() override {
-        // return std::unique_ptr<mem>(new mem(std::move(addr_ptr)));
-        //return std::make_unique<mem>( mem(std::move(addr_ptr)));
         return std::unique_ptr<mem>(new mem(std::move(addr_ptr)));
-
     }
 };
 
