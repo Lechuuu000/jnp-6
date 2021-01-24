@@ -66,12 +66,13 @@ class Memory {
     }
   public:
     Memory(size_t mem_size) : memory_array(mem_size, 0), var_addresses() {}
-    void declare_variable(const std::string& id) {
+    void declare_variable(const std::string& id, int64_t value) {
         if (id.empty() || id.length() > MAX_ID_LENGTH)
             throw InvalidIdentifierException();
         if(next_address >= memory_array.size())
             throw MemoryOverflowException();
 
+        memory_array[next_address] = value;
         var_addresses.insert({id, next_address++});
     }
     int64_t get_address(const std::string& id) {
@@ -89,7 +90,7 @@ class Memory {
         validate_address(address);
         memory_array[address] = value;
     }
-    void dump(std::ostream& stream) {
+    void dump(std::ostream& stream) const {
         for (auto i : memory_array)
             stream << i << " ";
     }
@@ -192,8 +193,10 @@ class ArithmeticOperation {
 };
 
 class BinaryOperation : public Instruction, public ArithmeticOperation {
+  private:
     std::unique_ptr<LValue> arg1_ptr;
     std::unique_ptr<RValue> arg2_ptr;
+
   protected:
     BinaryOperation(LValue&& lval, RValue&& rval)
         : arg1_ptr(lval.give_lval_ownership()), arg2_ptr(rval.give_ownership()) {}
@@ -207,7 +210,8 @@ class BinaryOperation : public Instruction, public ArithmeticOperation {
 
 class add : public BinaryOperation {
   public:
-    using BinaryOperation(LValue&& lval, RValue&& rval);
+    add(LValue&& lval, RValue&& rval) : BinaryOperation(std::move(lval), std::move(rval)) {}
+
     int64_t compute(int64_t arg1, int64_t arg2) const override {
         return arg1 + arg2;
     }
@@ -215,7 +219,7 @@ class add : public BinaryOperation {
 
 class sub : public BinaryOperation {
   public:
-    using BinaryOperation(LValue&& lval, RValue&& rval);
+    sub(LValue&& lval, RValue&& rval) : BinaryOperation(std::move(lval), std::move(rval)) {}
     int64_t compute(int64_t arg1, int64_t arg2) const override {
         return arg1 - arg2;
     }
@@ -227,6 +231,7 @@ class inc : public add {
 };
 
 class dec: public sub {
+  public:
     explicit dec(LValue&& lval) : sub(std::move(lval), num(1)) {}
 };
 
@@ -241,7 +246,7 @@ class mov : public Assignment {
 
 class one : public Assignment {
   public:
-    using Assignment(LValue&& lval);
+    one(LValue&& lval) : Assignment(std::move(lval)) {}
     void evaluate(Memory& memory, Flags& flags) const override {
         memory.set_variable(arg_ptr->get_address(memory), 1);
     }
@@ -249,7 +254,7 @@ class one : public Assignment {
 
 class ones : public one {
   public:
-    using Assignment(LValue&& lval);
+    ones(LValue&& lval) : one(std::move(lval)) {}
     void evaluate(Memory& memory, Flags& flags) const override {
         if(flags.is_signed())
             one::evaluate(memory, flags);
@@ -258,7 +263,7 @@ class ones : public one {
 
 class onez : public one {
   public:
-    using Assignment(LValue&& lval);
+    onez(LValue&& lval) : one(std::move(lval)) {}
     void evaluate(Memory& memory, Flags& flags) const override {
         if(flags.is_zero())
             one::evaluate(memory, flags);
@@ -268,10 +273,12 @@ class onez : public one {
 class data : public Instruction {
   private:
     std::string id;
+    std::unique_ptr<RValue> rval_ptr;
   public:
-    explicit data(const char* text) : id(convert_to_string(text)) {}
+    data(const char* text, RValue&& rval)
+        : id(convert_to_string(text)), rval_ptr(rval.give_ownership()) {}
     void pre_evaluate(Memory& memory) const override {
-        memory.declare_variable(id);
+        memory.declare_variable(id, rval_ptr->value(memory));
     }
     void evaluate(Memory& memory, Flags& flags) const override {}
 };
@@ -280,7 +287,7 @@ class data : public Instruction {
 class program {
   private:
     std::vector<Instruction> instructions;
-    mutable size_t index_of_next = 0;
+    size_t index_of_next = 0;
 
   public:
     program(std::initializer_list<Instruction> instrs) : instructions(instrs) {}

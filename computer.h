@@ -8,7 +8,7 @@
 class Computer {
   public:
     explicit Computer(size_t mem_size) : memory(mem_size) , flags(){}
-    void boot(const program& prog) {
+    void boot(program& prog) {
         // variable declarations
         while (prog.has_next_instruction()) {
             const Instruction& instruction = prog.get_next_instruction();
@@ -21,7 +21,7 @@ class Computer {
             instruction.evaluate(memory, flags);
         }
     }
-    void memory_dump(std::ostream& stream) {
+    void memory_dump(std::ostream& stream) const {
         memory.dump(stream);
     }
 
