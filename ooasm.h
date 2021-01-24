@@ -98,6 +98,8 @@ class Memory {
     void reset() {
         for (auto i : memory_array)
             i = 0;
+        var_addresses.clear();
+        next_address = 0;
     }
 
   private:
@@ -165,21 +167,28 @@ class lea : public RValue {
 };
 
 class mem : public LValue {
-    std::unique_ptr<RValue> rval_ptr;
-
+    std::unique_ptr<RValue> addr_ptr;
+    mem(std::unique_ptr<RValue>&& ptr) : addr_ptr(std::move(ptr)) {}
   public:
-    explicit mem(RValue&& rval) : rval_ptr(rval.give_ownership()) {}
+    explicit mem(RValue&& rval) : addr_ptr(rval.give_ownership()) {}
+    //mem(mem&& m) = delete;
     int64_t value(Memory& memory) const noexcept override {
-        return memory.get_value(rval_ptr->value(memory));
+        auto val = memory.get_value(addr_ptr->value(memory));
+        return val;
     }
     int64_t get_address(Memory& memory) const override {
-        return rval_ptr->value(memory);
+        return addr_ptr->value(memory);
     }
     std::unique_ptr<RValue> give_ownership() override {
-        return std::make_unique<mem>(std::move(*rval_ptr));
+
+        return std::unique_ptr<mem>(new mem(std::move(addr_ptr)));
+        // return std::unique_ptr<mem>(new mem(std::move(addr_ptr)));
     }
     std::unique_ptr<LValue> give_lval_ownership() override {
-        return std::make_unique<mem>(std::move(*rval_ptr));
+        // return std::unique_ptr<mem>(new mem(std::move(addr_ptr)));
+        //return std::make_unique<mem>( mem(std::move(addr_ptr)));
+        return std::unique_ptr<mem>(new mem(std::move(addr_ptr)));
+
     }
 };
 
